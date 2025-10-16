@@ -19,6 +19,15 @@ def featurize(url):
     has_at = 1 if '@' in url else 0
     return [length, nb_dots, nb_hyphens, has_at]
 
+# === Base route for info page ===
+@app.route("/", methods=["GET"])
+def home():
+    return """
+    <h2>Phishing Detection API is Live!</h2>
+    <p>Use the POST endpoint <code>/predict</code> with JSON payload:</p>
+    <pre>{"url": "http://example.com"}</pre>
+    """
+
 # === Prediction route ===
 @app.route("/predict", methods=["POST"])
 def predict():
