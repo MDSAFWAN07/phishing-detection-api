@@ -2,13 +2,16 @@ from flask import Flask, request, jsonify
 import joblib, os
 import tldextract
 import numpy as np
+import xgboost as xgb
 
 app = Flask(__name__)
 
-# load model & optional scaler
-model = joblib.load("phishing_model.joblib")
-scaler = joblib.load("scaler.joblib") if os.path.exists("scaler.joblib") else None
+# === Load XGBoost model and scaler ===
+model = xgb.XGBClassifier()
+model.load_model("phishing_xgboost_model.json")  # Load JSON model
+scaler = joblib.load("scaler.pkl") if os.path.exists("scaler.pkl") else None
 
+# === Feature extraction ===
 def featurize(url):
     length = len(url)
     nb_dots = url.count('.')
@@ -16,8 +19,10 @@ def featurize(url):
     has_at = 1 if '@' in url else 0
     return [length, nb_dots, nb_hyphens, has_at]
 
+# === Prediction route ===
 @app.route("/predict", methods=["POST"])
 def predict():
+    # Optional API key check
     if os.environ.get("API_KEY"):
         key = request.headers.get("x-api-key")
         if key != os.environ.get("API_KEY"):
@@ -32,9 +37,13 @@ def predict():
     X = np.array([feats])
     if scaler is not None:
         X = scaler.transform(X)
-    proba = model.predict_proba(X)[0].tolist()   # adjust if model doesn't have predict_proba
+
+    # XGBoost prediction
+    proba = model.predict_proba(X)[0].tolist()
     pred = int(model.predict(X)[0])
+
     return jsonify({"prediction": pred, "probabilities": proba})
 
+# === Run app ===
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT",5000)))
